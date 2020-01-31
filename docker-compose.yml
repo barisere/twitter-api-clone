@@ -1,0 +1,10 @@
+version: "3.7"
+
+services:
+  twitter_clone_db:
+    image: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "tw_admin"
+      MONGO_INITDB_ROOT_PASSWORD: "tw_admin"
+    ports:
+      - "27017:27017"

@@ -1,7 +1,21 @@
-import { Controller, Body, Post } from "@nestjs/common";
+import {
+  Controller,
+  Body,
+  Post,
+  Put,
+  Request,
+  BadRequestException
+} from "@nestjs/common";
 import { AccountService } from "./account.service";
 import { Account } from ".";
-import { ApiOperation, ApiConflictResponse } from "@nestjs/swagger";
+import {
+  ApiOperation,
+  ApiConflictResponse,
+  ApiOkResponse,
+  ApiBearerAuth,
+  ApiBadRequestResponse
+} from "@nestjs/swagger";
+import { ApiDataResponse, ApiErrorResponse } from "../common/api-response";
 
 @Controller("account")
 export class AccountController {
@@ -10,7 +24,19 @@ export class AccountController {
   @Post()
   @ApiOperation({ operationId: "create_account" })
   @ApiConflictResponse()
-  createAccount(@Body() account: Account) {
-    return this.svc.create(account);
+  async createAccount(@Body() account: Account) {
+    return new ApiDataResponse(await this.svc.create(account));
+  }
+
+  @Put("following")
+  @ApiOperation({ operationId: "follow_account" })
+  @ApiBearerAuth()
+  @ApiOkResponse()
+  @ApiBadRequestResponse()
+  async follow(@Body("username") userToFollow: string, @Request() req) {
+    const requestingUser = req.user;
+    const update = await this.svc.addFollower(requestingUser, userToFollow);
+
+    return new ApiDataResponse(update);
   }
 }

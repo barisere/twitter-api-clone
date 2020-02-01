@@ -40,8 +40,8 @@ export class AuthController {
     @Body("username") username: string,
     @Body("password") password: string
   ) {
-    const _account = await this.accountDB.findOne({ username }).exec();
-    const isCorrectPassword = await compare(password, _account.password);
+    const account = await this.accountDB.findById(username).exec();
+    const isCorrectPassword = await compare(password, account?.password ?? "");
     if (!isCorrectPassword) {
       throw new BadRequestException(
         new ApiErrorResponse({

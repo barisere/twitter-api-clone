@@ -40,4 +40,27 @@ export class AccountService {
       throw error;
     }
   }
+
+  async addFollower(username: string, userToFollow: string) {
+    const followedUser = await this.accountDB.findById(userToFollow);
+    if (!followedUser) {
+      throw new BadRequestException(
+        new ApiErrorResponse({
+          code: "account/unknown_account",
+          username: userToFollow
+        })
+      );
+    }
+    const user = await this.accountDB
+      .findByIdAndUpdate(
+        username,
+        {
+          $addToSet: { following: userToFollow }
+        },
+        { new: true }
+      )
+      .exec();
+
+    return user;
+  }
 }

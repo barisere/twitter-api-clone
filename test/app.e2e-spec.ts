@@ -3,10 +3,16 @@ import { INestApplication, HttpStatus } from "@nestjs/common";
 import * as request from "supertest";
 import { AppModule } from "./../src/app.module";
 import { getModelToken } from "@nestjs/mongoose";
-import { accountModelDefinition, Account } from "../src/account";
+import { Account } from "../src/account";
 import { Model } from "mongoose";
 import { decode } from "jsonwebtoken";
 import { MongoMemoryServer } from "mongodb-memory-server";
+import { Tweet } from "../src/tweets/tweet";
+import {
+  tweetModelDefinition,
+  Tweet as TweetModel
+} from "../src/tweets/tweet.model";
+import { range } from "ramda";
 
 const mongod = new MongoMemoryServer({
   instance: { port: 27017, dbName: "twclone" },
@@ -27,10 +33,6 @@ describe("AppController (e2e)", () => {
   });
 
   afterAll(async () => {
-    const db = app.get<Model<Account>>(
-      getModelToken(accountModelDefinition.name)
-    );
-    await db.remove({});
     await mongod.stop();
     await app.close();
   });
@@ -102,95 +104,144 @@ describe("AppController (e2e)", () => {
     });
   });
 
-  describe("Posting a tweet", () => {
-    beforeAll(async () => {
-      await createAccount(app, { username: "me", password: "me" });
+  describe("Tweet, replies, and timelines", () => {
+    let tweetsDb: Model<TweetModel>;
+
+    beforeEach(async () => {
+      tweetsDb = app.get(getModelToken(tweetModelDefinition.name));
+      return tweetsDb.remove({});
     });
 
-    const tweetMessage = "The quick brown fox jumps over the lazy dog.";
-
-    it("Requires an authenticated account", async () => {
-      const r = await postTweet(app, { message: tweetMessage }, "");
-
-      expect(r.unauthorized).toBeTruthy();
-      expect(r.body.error.code).toEqual("auth/token_required");
-    });
-
-    it("Given an authenticated account, creates the tweet for that account", async () => {
-      const loginResponse = await login(app, {
-        username: "me",
-        password: "me"
+    describe("Posting a tweet", () => {
+      beforeAll(async () => {
+        await createAccount(app, { username: "me", password: "me" });
       });
-      const token = loginResponse.body.data.token;
-      const r = await postTweet(app, { message: tweetMessage }, token);
 
-      expect(r.status).toEqual(HttpStatus.CREATED);
-      expect(r.body.data.message).toEqual(tweetMessage);
-    });
-  });
+      const tweetMessage = "The quick brown fox jumps over the lazy dog.";
 
-  describe("Replying to a tweet", () => {
-    beforeAll(async () => {
-      await createAccount(app, { username: "me", password: "me" });
-    });
-    const tweetMessage = "The quick brown fox jumps over the lazy dog.";
+      it("Requires an authenticated account", async () => {
+        const r = await postTweet(app, { message: tweetMessage }, "");
 
-    it("Requires an authenticated account", async () => {
-      const r = await postTweet(app, { message: tweetMessage }, "");
-
-      expect(r.unauthorized).toBeTruthy();
-      expect(r.body.error.code).toEqual("auth/token_required");
-    });
-
-    it("Given an existing tweet, it associates the reply with the first tweet.", async () => {
-      const loginResponse = await login(app, {
-        username: "me",
-        password: "me"
+        expect(r.unauthorized).toBeTruthy();
+        expect(r.body.error.code).toEqual("auth/token_required");
       });
-      const token = loginResponse.body.data.token;
 
-      const firstTweet = await postTweet(app, { message: tweetMessage }, token);
-      const firstTweetId = firstTweet.body.data.id;
+      it("Given an authenticated account, creates the tweet for that account", async () => {
+        const loginResponse = await login(app, {
+          username: "me",
+          password: "me"
+        });
+        const token = loginResponse.body.data.token;
+        const r = await postTweet(app, { message: tweetMessage }, token);
 
-      const {
-        body: { data },
-        status
-      } = await postTweet(
-        app,
-        { message: "Yea, that fox was quick.", inReplyTo: firstTweetId },
-        token
-      );
-
-      expect(status).toEqual(HttpStatus.CREATED);
-      expect(data.inReplyTo).toEqual(firstTweetId);
-    });
-
-    it("Requires an existing tweet in order to post a reply", async () => {
-      const loginResponse = await login(app, {
-        username: "me",
-        password: "me"
+        expect(r.status).toEqual(HttpStatus.CREATED);
+        expect(r.body.data.message).toEqual(tweetMessage);
       });
-      const token = loginResponse.body.data.token;
-
-      const firstTweet = "non-existent-id";
-
-      const r = await postTweet(
-        app,
-        { message: "This should fail.", inReplyTo: firstTweet },
-        token
-      );
-
-      expect(r.notFound).toBeTruthy();
-      expect(r.body.error.code).toEqual("tweets/not_found");
     });
-  });
 
-  describe("Viewing own timeline", () => {
-    it("Returns a paginated list of tweets posted by an account", async () => {});
-  });
+    describe("Replying to a tweet", () => {
+      beforeAll(async () => {
+        await createAccount(app, { username: "me", password: "me" });
+      });
 
-  describe("Searching for tweets and users", () => {});
+      const tweetMessage = "The quick brown fox jumps over the lazy dog.";
+
+      it("Requires an authenticated account", async () => {
+        const r = await postTweet(app, { message: tweetMessage }, "");
+
+        expect(r.unauthorized).toBeTruthy();
+        expect(r.body.error.code).toEqual("auth/token_required");
+      });
+
+      it("Given an existing tweet, it associates the reply with the first tweet.", async () => {
+        const loginResponse = await login(app, {
+          username: "me",
+          password: "me"
+        });
+        const token = loginResponse.body.data.token;
+
+        const firstTweet = await postTweet(
+          app,
+          { message: tweetMessage },
+          token
+        );
+        const firstTweetId = firstTweet.body.data.id;
+
+        const {
+          body: { data },
+          status
+        } = await postTweet(
+          app,
+          { message: "Yea, that fox was quick.", inReplyTo: firstTweetId },
+          token
+        );
+
+        expect(status).toEqual(HttpStatus.CREATED);
+        expect(data.inReplyTo).toEqual(firstTweetId);
+      });
+
+      it("Requires an existing tweet in order to post a reply", async () => {
+        const loginResponse = await login(app, {
+          username: "me",
+          password: "me"
+        });
+        const token = loginResponse.body.data.token;
+
+        const firstTweet = "non-existent-id";
+
+        const r = await postTweet(
+          app,
+          { message: "This should fail.", inReplyTo: firstTweet },
+          token
+        );
+
+        expect(r.notFound).toBeTruthy();
+        expect(r.body.error.code).toEqual("tweets/not_found");
+      });
+    });
+
+    describe("Viewing own timeline", () => {
+      beforeAll(async () => {
+        await createAccount(app, { username: "me", password: "me" });
+      });
+
+      it("Returns a list of tweets posted by an account", async () => {
+        const loginResponse = await login(app, {
+          password: "me",
+          username: "me"
+        });
+        const token = loginResponse.body.data.token;
+
+        const tweetMessages = await seedTweetsDb(app, "me", tweetsDb);
+
+        const r = await request(app.getHttpServer())
+          .get("/tweets")
+          .auth(token, { type: "bearer" })
+          .query({ author: "me" });
+
+        const tweets: Tweet[] = r.body.data;
+        expect(r.ok).toBeTruthy();
+        expect(tweets.length).toEqual(tweetMessages.length);
+        tweets.forEach(t => expect(t.author).toBe("me"));
+      });
+    });
+
+    describe("Searching for tweets and users", () => {});
+  });
 });
+
+async function seedTweetsDb(
+  app: INestApplication,
+  author: string,
+  db: Model<TweetModel>
+) {
+  const tweetMessages: Partial<Tweet>[] = range(0, 100).map((_v, idx) => {
+    const message = Math.pow(idx, 10).toString();
+    return { message, author };
+  });
+  const tweets = await db.insertMany(tweetMessages);
+  return tweets;
+}
 
 function postTweet(
   app: INestApplication,

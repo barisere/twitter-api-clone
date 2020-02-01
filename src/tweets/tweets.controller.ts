@@ -4,12 +4,16 @@ import {
   Body,
   Request,
   BadRequestException,
-  NotFoundException
+  NotFoundException,
+  Get,
+  Query
 } from "@nestjs/common";
 import {
   ApiOperation,
   ApiUnauthorizedResponse,
-  ApiCreatedResponse
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiBearerAuth
 } from "@nestjs/swagger";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
@@ -29,6 +33,7 @@ export class TweetsController {
   @ApiOperation({ operationId: "post_tweet" })
   @ApiUnauthorizedResponse()
   @ApiCreatedResponse()
+  @ApiBearerAuth()
   async create(
     @Body() t: Pick<Tweet, "message" | "inReplyTo">,
     @Request() req
@@ -42,7 +47,7 @@ export class TweetsController {
         throw notFoundException;
       }
 
-      const previousTweet = await this.tweetDB.findById(t.inReplyTo);
+      const previousTweet = await this.tweetDB.findById(t.inReplyTo).exec();
       if (previousTweet == null) {
         throw notFoundException;
       }
@@ -63,5 +68,14 @@ export class TweetsController {
       }
       throw error;
     }
+  }
+
+  @Get()
+  @ApiOperation({ operationId: "view_user_timeline" })
+  @ApiOkResponse()
+  @ApiBearerAuth()
+  async viewTimeline(@Query("author") author: string) {
+    const tweets = await this.tweetDB.find({ author }).exec();
+    return new ApiDataResponse(tweets);
   }
 }

@@ -8,10 +8,7 @@ import { Model } from "mongoose";
 import { decode } from "jsonwebtoken";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { Tweet } from "../src/tweets/tweet";
-import {
-  tweetModelDefinition,
-  Tweet as TweetModel
-} from "../src/tweets/tweet.model";
+import { tweetModelDefinition, TweetModel } from "../src/tweets/tweet.model";
 import { range } from "ramda";
 
 const mongod = new MongoMemoryServer({

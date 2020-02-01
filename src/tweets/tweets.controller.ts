@@ -3,25 +3,57 @@ import {
   Post,
   Body,
   Request,
-  BadRequestException,
-  NotFoundException,
   Get,
-  Query
+  Query,
+  HttpStatus
 } from "@nestjs/common";
 import {
   ApiOperation,
   ApiUnauthorizedResponse,
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiBearerAuth
+  ApiBearerAuth,
+  ApiProperty
 } from "@nestjs/swagger";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { tweetModelDefinition, Tweet as TweetModel } from "./tweet.model";
+import { tweetModelDefinition, TweetModel } from "./tweet.model";
 import { Tweet } from "./tweet";
 import { AssertionError } from "assert";
-import { ApiErrorResponse, ApiDataResponse } from "../common/api-response";
+import { ApiErrorResponse } from "../common/api-response";
 import { ObjectID } from "mongodb";
+
+class PostTweetDto {
+  @ApiProperty({
+    description: "The tweet message body.",
+    maxLength: 240,
+    minLength: 1
+  })
+  message: string;
+
+  @ApiProperty({
+    required: false,
+    description: "The ID of the tweet to reply to"
+  })
+  inReplyTo?: string;
+}
+
+class TweetDto<T extends Tweet> {
+  constructor(data: T) {
+    this.data = data;
+  }
+  @ApiProperty()
+  data: Tweet;
+}
+
+class TweetTimeline<T extends Tweet> {
+  @ApiProperty()
+  data: Tweet[];
+
+  constructor(data: T[]) {
+    this.data = data;
+  }
+}
 
 @Controller("tweets")
 export class TweetsController {
@@ -31,16 +63,17 @@ export class TweetsController {
 
   @Post()
   @ApiOperation({ operationId: "post_tweet" })
-  @ApiUnauthorizedResponse()
-  @ApiCreatedResponse()
+  @ApiUnauthorizedResponse({
+    description: "A valid authentication token is required.",
+    type: ApiErrorResponse
+  })
+  @ApiCreatedResponse({ type: TweetDto })
   @ApiBearerAuth()
-  async create(
-    @Body() t: Pick<Tweet, "message" | "inReplyTo">,
-    @Request() req
-  ) {
+  async create(@Body() t: PostTweetDto, @Request() req) {
     if (t.inReplyTo) {
-      const notFoundException = new NotFoundException(
-        new ApiErrorResponse({ code: "tweets/not_found" })
+      const notFoundException = new ApiErrorResponse(
+        { code: "tweets/not_found" },
+        HttpStatus.NOT_FOUND
       );
 
       if (!ObjectID.isValid(t.inReplyTo)) {
@@ -56,14 +89,15 @@ export class TweetsController {
     try {
       const tweet = new Tweet(t.message, req.user, t.inReplyTo);
       const newTweet = await this.tweetDB.create(tweet);
-      return new ApiDataResponse(newTweet);
+      return new TweetDto(newTweet);
     } catch (error) {
       if (error instanceof AssertionError) {
-        throw new BadRequestException(
-          new ApiErrorResponse({
+        throw new ApiErrorResponse(
+          {
             code: "tweets/malformed_request",
             message: error.message
-          })
+          },
+          HttpStatus.BAD_REQUEST
         );
       }
       throw error;
@@ -72,10 +106,10 @@ export class TweetsController {
 
   @Get()
   @ApiOperation({ operationId: "view_user_timeline" })
-  @ApiOkResponse()
+  @ApiOkResponse({ type: TweetTimeline, isArray: true })
   @ApiBearerAuth()
   async viewTimeline(@Query("author") author: string) {
     const tweets = await this.tweetDB.find({ author }).exec();
-    return new ApiDataResponse(tweets);
+    return new TweetTimeline(tweets);
   }
 }

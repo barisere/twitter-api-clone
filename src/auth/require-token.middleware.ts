@@ -1,6 +1,5 @@
 import { Injectable, NestMiddleware, HttpStatus } from "@nestjs/common";
 import { Request, Response } from "express";
-import { ApiErrorResponse } from "../common/api-response";
 import { verify, TokenExpiredError, JsonWebTokenError } from "jsonwebtoken";
 import { get } from "config";
 
@@ -28,6 +27,6 @@ export class RequireTokenMiddleware implements NestMiddleware {
 function respondWithUnauthorized(res: Response, code: string): void {
   return res
     .status(HttpStatus.UNAUTHORIZED)
-    .json(new ApiErrorResponse({ code }))
+    .json({ error: { code } })
     .end();
 }

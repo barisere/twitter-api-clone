@@ -1,5 +1,6 @@
 import { Schema, SchemaTypes, Document } from "mongoose";
 import { ModelDefinition } from "@nestjs/mongoose";
+import { Tweet } from "./tweet";
 
 export const tweetSchema = new Schema({
   message: {
@@ -30,4 +31,6 @@ export const tweetModelDefinition: ModelDefinition = {
   collection: "tweets"
 };
 
-export interface Tweet extends Document {}
+export interface TweetModel extends Tweet, Document {
+  id: string;
+}

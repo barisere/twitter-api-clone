@@ -5,7 +5,6 @@ import {
   RequestMethod
 } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AccountService } from "./account/account.service";
 import { AccountController } from "./account/account.controller";
@@ -27,12 +26,7 @@ const dbURL = get<string>("dbURL");
     }),
     MongooseModule.forFeature([accountModelDefinition, tweetModelDefinition])
   ],
-  controllers: [
-    AppController,
-    AccountController,
-    AuthController,
-    TweetsController
-  ],
+  controllers: [AccountController, AuthController, TweetsController],
   providers: [AppService, AccountService]
 })
 export class AppModule implements NestModule {

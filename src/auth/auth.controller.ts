@@ -1,4 +1,4 @@
-import { Controller, Post, Body, BadRequestException } from "@nestjs/common";
+import { Controller, Post, Body, HttpStatus } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { accountModelDefinition, Account } from "../account";
 import { Model } from "mongoose";
@@ -8,9 +8,12 @@ import { get } from "config";
 import {
   ApiOkResponse,
   ApiOperation,
-  ApiBadRequestResponse
+  ApiBadRequestResponse,
+  ApiBody
 } from "@nestjs/swagger";
-import { ApiDataResponse, ApiErrorResponse } from "../common/api-response";
+import { ApiErrorResponse } from "../common/api-response";
+import { LoginDto } from "../common/login-dto";
+import { SchemaObject } from "@nestjs/swagger/dist/interfaces/open-api-spec.interface";
 
 const secretKey = get<string>("jwtSecretKey");
 
@@ -23,6 +26,15 @@ function makeAuthToken(username: string) {
   return token;
 }
 
+const tokenSchema: SchemaObject = {
+  properties: {
+    data: {
+      type: "object",
+      properties: { token: { type: "string" } }
+    }
+  }
+};
+
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -32,10 +44,14 @@ export class AuthController {
   @Post("login")
   @ApiOperation({ operationId: "login" })
   @ApiOkResponse({
-    type: String,
+    schema: tokenSchema,
     description: "A JWT token to identify the user."
   })
-  @ApiBadRequestResponse()
+  @ApiBody({ type: LoginDto })
+  @ApiBadRequestResponse({
+    description: "An incorrect password was provided.",
+    type: ApiErrorResponse
+  })
   async login(
     @Body("username") username: string,
     @Body("password") password: string
@@ -43,12 +59,13 @@ export class AuthController {
     const account = await this.accountDB.findById(username).exec();
     const isCorrectPassword = await compare(password, account?.password ?? "");
     if (!isCorrectPassword) {
-      throw new BadRequestException(
-        new ApiErrorResponse({
+      throw new ApiErrorResponse(
+        {
           code: "auth/incorrect_credentials"
-        })
+        },
+        HttpStatus.BAD_REQUEST
       );
     }
-    return new ApiDataResponse({ token: makeAuthToken(username) });
+    return { data: { token: makeAuthToken(username) } };
   }
 }

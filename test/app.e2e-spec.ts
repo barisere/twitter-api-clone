@@ -6,11 +6,18 @@ import { getModelToken } from "@nestjs/mongoose";
 import { accountModelDefinition, Account } from "../src/account";
 import { Model } from "mongoose";
 import { decode } from "jsonwebtoken";
+import { MongoMemoryServer } from "mongodb-memory-server";
+
+const mongod = new MongoMemoryServer({
+  instance: { port: 27017, dbName: "twclone" },
+  autoStart: true
+});
 
 describe("AppController (e2e)", () => {
   let app: INestApplication;
 
   beforeEach(async () => {
+    await mongod.ensureInstance();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule]
     }).compile();
@@ -24,6 +31,7 @@ describe("AppController (e2e)", () => {
       getModelToken(accountModelDefinition.name)
     );
     await db.remove({});
+    await mongod.stop();
     await app.close();
   });
 

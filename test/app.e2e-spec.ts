@@ -4,7 +4,7 @@ import * as request from "supertest";
 import { AppModule } from "./../src/app.module";
 import { getModelToken } from "@nestjs/mongoose";
 import { Account } from "../src/account";
-import { Model } from "mongoose";
+import { Model, connections, disconnect } from "mongoose";
 import { decode } from "jsonwebtoken";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { Tweet } from "../src/tweets/tweet";
@@ -30,6 +30,8 @@ describe("AppController (e2e)", () => {
   });
 
   afterAll(async () => {
+    connections.forEach(async c => await c.close());
+    await disconnect();
     await mongod.stop();
     await app.close();
   });

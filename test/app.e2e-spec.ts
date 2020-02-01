@@ -16,7 +16,7 @@ const mongod = new MongoMemoryServer({
 describe("AppController (e2e)", () => {
   let app: INestApplication;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     await mongod.ensureInstance();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule]
@@ -101,7 +101,107 @@ describe("AppController (e2e)", () => {
       expect(r.body.error.code).toEqual("account/unknown_account");
     });
   });
+
+  describe("Posting a tweet", () => {
+    beforeAll(async () => {
+      await createAccount(app, { username: "me", password: "me" });
+    });
+
+    const tweetMessage = "The quick brown fox jumps over the lazy dog.";
+
+    it("Requires an authenticated account", async () => {
+      const r = await postTweet(app, { message: tweetMessage }, "");
+
+      expect(r.unauthorized).toBeTruthy();
+      expect(r.body.error.code).toEqual("auth/token_required");
+    });
+
+    it("Given an authenticated account, creates the tweet for that account", async () => {
+      const loginResponse = await login(app, {
+        username: "me",
+        password: "me"
+      });
+      const token = loginResponse.body.data.token;
+      const r = await postTweet(app, { message: tweetMessage }, token);
+
+      expect(r.status).toEqual(HttpStatus.CREATED);
+      expect(r.body.data.message).toEqual(tweetMessage);
+    });
+  });
+
+  describe("Replying to a tweet", () => {
+    beforeAll(async () => {
+      await createAccount(app, { username: "me", password: "me" });
+    });
+    const tweetMessage = "The quick brown fox jumps over the lazy dog.";
+
+    it("Requires an authenticated account", async () => {
+      const r = await postTweet(app, { message: tweetMessage }, "");
+
+      expect(r.unauthorized).toBeTruthy();
+      expect(r.body.error.code).toEqual("auth/token_required");
+    });
+
+    it("Given an existing tweet, it associates the reply with the first tweet.", async () => {
+      const loginResponse = await login(app, {
+        username: "me",
+        password: "me"
+      });
+      const token = loginResponse.body.data.token;
+
+      const firstTweet = await postTweet(app, { message: tweetMessage }, token);
+      const firstTweetId = firstTweet.body.data.id;
+
+      const {
+        body: { data },
+        status
+      } = await postTweet(
+        app,
+        { message: "Yea, that fox was quick.", inReplyTo: firstTweetId },
+        token
+      );
+
+      expect(status).toEqual(HttpStatus.CREATED);
+      expect(data.inReplyTo).toEqual(firstTweetId);
+    });
+
+    it("Requires an existing tweet in order to post a reply", async () => {
+      const loginResponse = await login(app, {
+        username: "me",
+        password: "me"
+      });
+      const token = loginResponse.body.data.token;
+
+      const firstTweet = "non-existent-id";
+
+      const r = await postTweet(
+        app,
+        { message: "This should fail.", inReplyTo: firstTweet },
+        token
+      );
+
+      expect(r.notFound).toBeTruthy();
+      expect(r.body.error.code).toEqual("tweets/not_found");
+    });
+  });
+
+  describe("Viewing own timeline", () => {
+    it("Returns a paginated list of tweets posted by an account", async () => {});
+  });
+
+  describe("Searching for tweets and users", () => {});
 });
+
+function postTweet(
+  app: INestApplication,
+  data: { message: string; inReplyTo?: string },
+  authToken: string
+) {
+  return request(app.getHttpServer())
+    .post("/tweets")
+    .auth(authToken, { type: "bearer" })
+    .send(data);
+}
 
 function followAccount(app: INestApplication, token: string, username: string) {
   return request(app.getHttpServer())

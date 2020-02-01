@@ -13,6 +13,8 @@ import { get } from "config";
 import { accountModelDefinition } from "./account";
 import { AuthController } from "./auth/auth.controller";
 import { RequireTokenMiddleware } from "./auth/require-token.middleware";
+import { TweetsController } from "./tweets/tweets.controller";
+import { tweetModelDefinition } from "./tweets/tweet.model";
 
 const dbURL = get<string>("dbURL");
 
@@ -23,9 +25,14 @@ const dbURL = get<string>("dbURL");
       connectTimeoutMS: 10000,
       useNewUrlParser: true
     }),
-    MongooseModule.forFeature([accountModelDefinition])
+    MongooseModule.forFeature([accountModelDefinition, tweetModelDefinition])
   ],
-  controllers: [AppController, AccountController, AuthController],
+  controllers: [
+    AppController,
+    AccountController,
+    AuthController,
+    TweetsController
+  ],
   providers: [AppService, AccountService]
 })
 export class AppModule implements NestModule {
@@ -33,6 +40,6 @@ export class AppModule implements NestModule {
     consumer
       .apply(RequireTokenMiddleware)
       .exclude({ method: RequestMethod.POST, path: "account" })
-      .forRoutes(AccountController);
+      .forRoutes(AccountController, TweetsController);
   }
 }

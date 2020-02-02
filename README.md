@@ -63,9 +63,6 @@ The API documentation can be viewed as an HTML page (using SwaggerUI) by running
 ## Possible improvements
 
 1. The integration tests have some implicit coupling by using shared database state across some tests. Some of that shared state is desirable, in order to reduce setup/teardown overhead. The shared state should be made explicit.
-
 2. The API documentation is auto-generated, and it is spread across the entire code base. Having it in one module can be better a approach.
-
 3. There is no strict architectural pattern used here, although there is some resemblance to MVC. Adopting an architectural pattern can make the project easier to navigate.
-
 4. There is no length restriction on account usernames. That I forgot something so important is humiliating.

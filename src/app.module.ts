@@ -5,7 +5,6 @@ import {
   RequestMethod
 } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { AppService } from "./app.service";
 import { AccountService } from "./account/account.service";
 import { AccountController } from "./account/account.controller";
 import { get } from "config";
@@ -33,7 +32,7 @@ const dbURL = get<string>("dbURL");
     TweetsController,
     SearchController
   ],
-  providers: [AppService, AccountService]
+  providers: [AccountService]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

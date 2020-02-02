@@ -27,7 +27,13 @@ export class SearchController {
   ) {}
 
   @Get()
-  @ApiOperation({ operationId: "search" })
+  @ApiOperation({
+    operationId: "search",
+    description:
+      "Find accounts or tweets that match a phrase." +
+      "For accounts, only the username is matched; for tweets, both the author's username" +
+      "and the message are matched, but the message has higher priority."
+  })
   @ApiOkResponse({ type: SearchResponse })
   async search(@Query() query: { q?: string; type?: "account" | "tweet" }) {
     let tweets = [];

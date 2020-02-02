@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 
 export class LoginDto {
-  @ApiProperty()
+  @ApiProperty({ description: "Account username, unique across accounts." })
   username: string;
 
   @ApiProperty()

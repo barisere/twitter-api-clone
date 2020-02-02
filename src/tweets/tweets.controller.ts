@@ -23,7 +23,7 @@ import { AssertionError } from "assert";
 import { ApiErrorResponse } from "../common/api-response";
 import { ObjectID } from "mongodb";
 
-class PostTweetDto {
+class PostTweetRequest {
   @ApiProperty({
     description: "The tweet message body.",
     maxLength: 240,
@@ -33,12 +33,12 @@ class PostTweetDto {
 
   @ApiProperty({
     required: false,
-    description: "The ID of the tweet to reply to"
+    description: "The ID of the tweet to reply to."
   })
   inReplyTo?: string;
 }
 
-class TweetDto<T extends Tweet> {
+class PostTweetResponse<T extends Tweet> {
   constructor(data: T) {
     this.data = data;
   }
@@ -47,7 +47,7 @@ class TweetDto<T extends Tweet> {
 }
 
 class TweetTimeline<T extends Tweet> {
-  @ApiProperty()
+  @ApiProperty({ type: Tweet, isArray: true })
   data: Tweet[];
 
   constructor(data: T[]) {
@@ -62,14 +62,17 @@ export class TweetsController {
   ) {}
 
   @Post()
-  @ApiOperation({ operationId: "post_tweet" })
+  @ApiOperation({
+    operationId: "post_tweet",
+    description: "Post a tweet, or reply to another tweet."
+  })
   @ApiUnauthorizedResponse({
     description: "A valid authentication token is required.",
     type: ApiErrorResponse
   })
-  @ApiCreatedResponse({ type: TweetDto })
+  @ApiCreatedResponse({ type: PostTweetResponse })
   @ApiBearerAuth()
-  async create(@Body() t: PostTweetDto, @Request() req) {
+  async create(@Body() t: PostTweetRequest, @Request() req) {
     if (t.inReplyTo) {
       const notFoundException = new ApiErrorResponse(
         { code: "tweets/not_found" },
@@ -89,7 +92,7 @@ export class TweetsController {
     try {
       const tweet = new Tweet(t.message, req.user, t.inReplyTo);
       const newTweet = await this.tweetDB.create(tweet);
-      return new TweetDto(newTweet);
+      return new PostTweetResponse(newTweet);
     } catch (error) {
       if (error instanceof AssertionError) {
         throw new ApiErrorResponse(
@@ -105,8 +108,13 @@ export class TweetsController {
   }
 
   @Get()
-  @ApiOperation({ operationId: "view_user_timeline" })
-  @ApiOkResponse({ type: TweetTimeline, isArray: true })
+  @ApiOperation({
+    operationId: "view_user_timeline",
+    description: "View all the tweets that have been posted by an account."
+  })
+  @ApiOkResponse({
+    type: TweetTimeline
+  })
   @ApiBearerAuth()
   async viewTimeline(@Query("author") author: string) {
     const tweets = await this.tweetDB.find({ author }).exec();

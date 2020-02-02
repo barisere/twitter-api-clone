@@ -19,15 +19,7 @@ class FollowAccountRequest {
   username: string;
 }
 
-class FollowAccountResponse {
-  constructor(data: Account) {
-    this.data = data;
-  }
-  @ApiProperty()
-  data: Account;
-}
-
-class CreateAccountResponse {
+class AccountResponse {
   constructor(data: Account) {
     this.data = data;
   }
@@ -36,31 +28,37 @@ class CreateAccountResponse {
   data: Account;
 }
 
-@Controller("account")
+@Controller("accounts")
 export class AccountController {
   constructor(private svc: AccountService) {}
 
   @Post()
-  @ApiOperation({ operationId: "create_account" })
-  @ApiCreatedResponse({ type: CreateAccountResponse })
+  @ApiOperation({
+    operationId: "create_account",
+    description: "Create a new account. This requires a unique username."
+  })
+  @ApiCreatedResponse({ type: AccountResponse })
   @ApiConflictResponse({
     description: "Username already exists.",
     type: ApiErrorResponse
   })
   async createAccount(@Body() account: LoginDto) {
-    return new CreateAccountResponse(await this.svc.create(account));
+    return new AccountResponse(await this.svc.create(account));
   }
 
   @Put("following")
-  @ApiOperation({ operationId: "follow_account" })
+  @ApiOperation({
+    operationId: "follow_account",
+    description: "Subscribe to another account's tweets."
+  })
   @ApiBearerAuth("apiKey")
   @ApiBody({ type: FollowAccountRequest })
-  @ApiOkResponse({ type: FollowAccountResponse })
+  @ApiOkResponse({ type: AccountResponse })
   @ApiBadRequestResponse({ type: ApiErrorResponse })
   async follow(@Body("username") userToFollow: string, @Request() req) {
     const requestingUser = req.user;
     const update = await this.svc.addFollower(requestingUser, userToFollow);
 
-    return new FollowAccountResponse(update);
+    return new AccountResponse(update);
   }
 }

@@ -42,7 +42,11 @@ export class AuthController {
   ) {}
 
   @Post("login")
-  @ApiOperation({ operationId: "login" })
+  @ApiOperation({
+    operationId: "login",
+    description:
+      "Obtain a token with which you can access restricted API endpoints."
+  })
   @ApiOkResponse({
     schema: tokenSchema,
     description: "A JWT token to identify the user."

@@ -277,7 +277,7 @@ function postTweet(
 
 function followAccount(app: INestApplication, token: string, username: string) {
   return request(app.getHttpServer())
-    .put("/account/following")
+    .put("/accounts/following")
     .auth(token, { type: "bearer" })
     .send({ username });
 }
@@ -296,6 +296,6 @@ async function createAccount(
   account: { username: string; password: string }
 ) {
   return request(app.getHttpServer())
-    .post("/account")
+    .post("/accounts")
     .send(account);
 }

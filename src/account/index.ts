@@ -22,6 +22,8 @@ export const accountSchema = new Schema({
   }
 });
 
+accountSchema.index({ username: "text" });
+
 function setIdToUsername(next: HookNextFunction): void {
   if (this.username) {
     this._id = this.username;

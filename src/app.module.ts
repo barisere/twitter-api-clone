@@ -14,6 +14,7 @@ import { AuthController } from "./auth/auth.controller";
 import { RequireTokenMiddleware } from "./auth/require-token.middleware";
 import { TweetsController } from "./tweets/tweets.controller";
 import { tweetModelDefinition } from "./tweets/tweet.model";
+import { SearchController } from './search/search.controller';
 
 const dbURL = get<string>("dbURL");
 
@@ -26,7 +27,7 @@ const dbURL = get<string>("dbURL");
     }),
     MongooseModule.forFeature([accountModelDefinition, tweetModelDefinition])
   ],
-  controllers: [AccountController, AuthController, TweetsController],
+  controllers: [AccountController, AuthController, TweetsController, SearchController],
   providers: [AppService, AccountService]
 })
 export class AppModule implements NestModule {

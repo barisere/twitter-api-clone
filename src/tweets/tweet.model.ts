@@ -5,8 +5,7 @@ import { Tweet } from "./tweet";
 export const tweetSchema = new Schema({
   message: {
     type: SchemaTypes.String,
-    required: true,
-    index: "text"
+    required: true
   },
   date: {
     type: SchemaTypes.Date,
@@ -24,6 +23,11 @@ export const tweetSchema = new Schema({
     ref: "Tweet"
   }
 });
+
+tweetSchema.index(
+  { message: "text", author: "text" },
+  { weights: { message: 2, author: 1 } }
+);
 
 export const tweetModelDefinition: ModelDefinition = {
   name: "Tweet",

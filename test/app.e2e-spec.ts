@@ -37,18 +37,20 @@ describe("AppController (e2e)", () => {
   });
 
   describe("User signup with username and password", () => {
-    const user = { username: "jack", password: "jack" };
-
     it("Creates a new account if the username is unique", async () => {
-      const r = await createAccount(app, user);
+      const userJack = { username: "jack", password: "jack" };
+
+      const r = await createAccount(app, userJack);
 
       expect(r.status).toEqual(HttpStatus.CREATED);
     });
 
     it("Rejects the request if the username is not unique", async () => {
-      await createAccount(app, user);
+      const newUser = { username: "bailey", password: "bailey" };
+      await createAccount(app, newUser);
 
-      const r = await createAccount(app, user);
+      // If the previous request succeeded, this request should fail.
+      const r = await createAccount(app, newUser);
 
       expect(r.status).toEqual(HttpStatus.CONFLICT);
       expect(r.body.error.code).toEqual("account/duplicate");
@@ -105,6 +107,16 @@ describe("AppController (e2e)", () => {
 
   describe("Tweet, replies, and timelines", () => {
     let tweetsDb: Model<TweetModel>;
+    let token: string;
+
+    beforeAll(async () => {
+      await createAccount(app, { username: "me", password: "me" });
+      const loginResponse = await login(app, {
+        username: "me",
+        password: "me"
+      });
+      token = loginResponse.body.data.token;
+    });
 
     beforeEach(async () => {
       tweetsDb = app.get(getModelToken(tweetModelDefinition.name));
@@ -112,10 +124,6 @@ describe("AppController (e2e)", () => {
     });
 
     describe("Posting a tweet", () => {
-      beforeAll(async () => {
-        await createAccount(app, { username: "me", password: "me" });
-      });
-
       const tweetMessage = "The quick brown fox jumps over the lazy dog.";
 
       it("Requires an authenticated account", async () => {
@@ -126,11 +134,6 @@ describe("AppController (e2e)", () => {
       });
 
       it("Given an authenticated account, creates the tweet for that account", async () => {
-        const loginResponse = await login(app, {
-          username: "me",
-          password: "me"
-        });
-        const token = loginResponse.body.data.token;
         const r = await postTweet(app, { message: tweetMessage }, token);
 
         expect(r.status).toEqual(HttpStatus.CREATED);
@@ -139,10 +142,6 @@ describe("AppController (e2e)", () => {
     });
 
     describe("Replying to a tweet", () => {
-      beforeAll(async () => {
-        await createAccount(app, { username: "me", password: "me" });
-      });
-
       const tweetMessage = "The quick brown fox jumps over the lazy dog.";
 
       it("Requires an authenticated account", async () => {
@@ -153,12 +152,6 @@ describe("AppController (e2e)", () => {
       });
 
       it("Given an existing tweet, it associates the reply with the first tweet.", async () => {
-        const loginResponse = await login(app, {
-          username: "me",
-          password: "me"
-        });
-        const token = loginResponse.body.data.token;
-
         const firstTweet = await postTweet(
           app,
           { message: tweetMessage },
@@ -180,12 +173,6 @@ describe("AppController (e2e)", () => {
       });
 
       it("Requires an existing tweet in order to post a reply", async () => {
-        const loginResponse = await login(app, {
-          username: "me",
-          password: "me"
-        });
-        const token = loginResponse.body.data.token;
-
         const firstTweet = "non-existent-id";
 
         const r = await postTweet(
@@ -200,17 +187,7 @@ describe("AppController (e2e)", () => {
     });
 
     describe("Viewing own timeline", () => {
-      beforeAll(async () => {
-        await createAccount(app, { username: "me", password: "me" });
-      });
-
       it("Returns a list of tweets posted by an account", async () => {
-        const loginResponse = await login(app, {
-          password: "me",
-          username: "me"
-        });
-        const token = loginResponse.body.data.token;
-
         const tweetMessages = await seedTweetsDb(app, "me", tweetsDb);
 
         const r = await request(app.getHttpServer())
@@ -225,19 +202,64 @@ describe("AppController (e2e)", () => {
       });
     });
 
-    describe("Searching for tweets and users", () => {});
+    describe("Searching for tweets and users", () => {
+      it("Without a 'q' query, returns nothing", async () => {
+        const r = await request(app.getHttpServer())
+          .get("/search")
+          .query({});
+
+        expect(r.ok).toBeTruthy();
+        expect(r.body.data.accounts).toHaveLength(0);
+        expect(r.body.data.tweets).toHaveLength(0);
+      });
+
+      it("Without a 'type' query, searches both accounts and tweets", async () => {
+        await seedTweetsDb(
+          app,
+          "jack",
+          tweetsDb,
+          "The quick brown fox jumps over the lazy dog."
+        );
+        const r = await request(app.getHttpServer())
+          .get("/search")
+          .query({ q: "jack is a lazy fox" });
+
+        expect(r.ok).toBeTruthy();
+        expect(r.body.data.accounts).toMatchObject([{ username: "jack" }]);
+        expect(r.body.data.tweets).toMatchObject([
+          {
+            message: "The quick brown fox jumps over the lazy dog."
+          }
+        ]);
+      });
+
+      it("Given a 'type' query, searches only that resource", async () => {
+        const r = await request(app.getHttpServer())
+          .get("/search")
+          .query({ q: "jack is a lazy fox", type: "account" });
+
+        expect(r.ok).toBeTruthy();
+        expect(r.body.data.accounts).toMatchObject([{ username: "jack" }]);
+        expect(r.body.data.tweets).toHaveLength(0);
+      });
+    });
   });
 });
 
 async function seedTweetsDb(
   app: INestApplication,
   author: string,
-  db: Model<TweetModel>
+  db: Model<TweetModel>,
+  ...messages: string[]
 ) {
-  const tweetMessages: Partial<Tweet>[] = range(0, 100).map((_v, idx) => {
-    const message = Math.pow(idx, 10).toString();
-    return { message, author };
-  });
+  const tweetMessages = messages.map(message => ({ message, author }));
+  if (tweetMessages.length === 0) {
+    const randomMessages = range(0, 100).map((_v, idx) => {
+      const message = Math.pow(idx, 10).toString();
+      return { message, author };
+    });
+    tweetMessages.push(...randomMessages);
+  }
   const tweets = await db.insertMany(tweetMessages);
   return tweets;
 }

@@ -11,6 +11,7 @@ This exercise aims to implement the following features of Twitter's API.
 - Search (Tweets and Users)
 
 Together with the implementation, the API documentation is provided in the OpenAPI format. This implementation is an exercise in REST API design.
+The API documentation is available on SwaggerHub at [Twitter Clone (API)](https://app.swaggerhub.com/apis/barisere/twitter_clone_api/0.1.0).
 
 ## Primary Resources
 
@@ -63,8 +64,6 @@ The API documentation can be viewed as an HTML page (using SwaggerUI) by running
 
 2. The API documentation is auto-generated, and it is spread across the entire code base. Having it in one module can be better a approach.
 
-3. Either host a live version of the API on Heroku, or host the API documentation file on SwaggerHub.
+3. There is no strict architectural pattern used here, although there is some resemblance to MVC. Adopting an architectural pattern can make the project easier to navigate.
 
-4. There is no strict architectural pattern used here, although there is some resemblance to MVC. Adopting an architectural pattern can make the project easier to navigate.
-
-5. There is no length restriction on account usernames. That I forgot something so important is humiliating.
+4. There is no length restriction on account usernames. That I forgot something so important is humiliating.

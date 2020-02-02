@@ -47,3 +47,11 @@ A `docker-compose.yml` file is provided with a simple setup for running a MongoD
 ## Documentation
 
 The API documentation can be viewed as an HTML page (using SwaggerUI) by running the application and navigation to the "/api-doc" path. Navigating to the "/api-doc-json" path will produce the documentation in JSON, format.
+
+## TODO
+
+1. The integration tests have some implicit coupling by using shared database state across some tests. Some of that shared state is desirable, in order to reduce setup/teardown overhead. The shared state should be made explicit.
+
+2. The API documentation is auto-generated, and it is spread across the entire code base. Having it in one module can be better, so explore that approach.
+
+3. Either host a live version of the API on Heroku, or host the API documentation file on SwaggerHub.

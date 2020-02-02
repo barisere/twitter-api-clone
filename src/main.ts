@@ -8,7 +8,11 @@ async function bootstrap() {
   const options = new DocumentBuilder()
     .setTitle("Twitter Clone (API)")
     .setVersion("0.1.0")
-    .addBearerAuth({ bearerFormat: "jwt", type: "apiKey", in: "header" })
+    .addSecurity("bearer", {
+      name: "authorization",
+      type: "apiKey",
+      in: "header"
+    })
     .build();
   options.openapi = "3.0.1";
 

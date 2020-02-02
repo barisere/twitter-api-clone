@@ -1,5 +1,7 @@
 # Twitter Clone (API)
 
+![Node.js CI](https://github.com/barisere/twitter-api-clone/workflows/Node.js%20CI/badge.svg)
+
 This exercise aims to implement the following features of Twitter's API.
 
 - User signup
